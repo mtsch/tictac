@@ -1,8 +1,19 @@
 {-# OPTIONS_GHC -Wall #-}
-module Tictac where
+module GameLogic
+  ( Player (..)
+  , Board  (..)
+  , Move
+  , Size
+  , WinK
+  , putOnBoard
+  , legalMoves 
+  , boardResult
+  , showBoard
+  )
+where
 
-import Debug.Trace (traceShow)
 import Data.List
+import Data.List.Split (chunksOf)
 
 data Player = X
             | O
@@ -11,10 +22,8 @@ data Player = X
 data Result = Winner Player | Tie | NotOver
               deriving (Show)
 
-type Square = Maybe Player
-
 -- n × m board
-data Board = Board { board :: [Square]
+data Board = Board { board :: [Maybe Player]
                    , size  :: Size
                    } deriving(Show, Eq)
 
@@ -36,16 +45,16 @@ toMove :: Size -> Int -> Move
 toMove (n, _) i = (i `div` n, i `mod` n)
 
 -- put element at nth place in a list
-put :: [a] -> Int -> a -> [a]
-put []     _ _ = []
-put (_:xs) 0 c = c : xs
-put (x:xs) n c = x : (put xs (n-1) c)
+put :: a -> Int -> [a] -> [a]
+put _ _ []     = []
+put c 0 (_:xs) = c : xs
+put c n (x:xs) = x : (put c (n-1) xs)
 
 -- perform move on board for player p, if move is legal
 putOnBoard :: Player -> Move -> Board -> Maybe Board
 putOnBoard p move b = if   index >= n*m || bd !! index /= Nothing
                       then Nothing
-                      else Just $ Board (put bd index $ Just p) (size b)
+                      else Just $ Board (put (Just p) index bd) (size b)
                         where
                           index  = fromMove (size b) move
                           (n, m) = (size b)
@@ -135,20 +144,11 @@ boardResult k b | playerWon k b X = Winner X
                 | gameIsOver b    = Tie
                 | otherwise       = NotOver
 
--- empty board
-initialBoard :: Board
-initialBoard = Board ((take 9) $ repeat Nothing) (3, 3)
+showSquare :: Maybe Player -> String
+showSquare Nothing  = "."
+showSquare (Just p) = show p
 
--- some filled board
-someBoard :: Maybe Board
-someBoard = putOnBoard X (1,1) initialBoard
+showBoard :: Board -> String
+showBoard (Board l (_, m)) = unlines $ chunksOf m str
+                               where str = concat $ map showSquare l 
 
-someWinBoard :: Maybe Board
-someWinBoard = Just $ Board [ Just X,  Just O,  Just X
-                            , Just O,  Just X,  Just O
-                            , Nothing, Nothing, Just X ]
-                            (3, 3)
-
--- ignore warnings
-ts :: Show a => a -> b -> b
-ts = traceShow
