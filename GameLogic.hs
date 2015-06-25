@@ -1,11 +1,14 @@
 {-# OPTIONS_GHC -Wall #-}
 module GameLogic
-  ( Player (..)
+  ( Piece (..)
   , Result (..)
   , Board  (..)
   , Move
   , Size
   , WinK
+  , GameState (..)
+  , showState
+  , initialState
   , putPiece
   , legalMoves
   , boardResult
@@ -15,15 +18,15 @@ where
 import Data.List
 import Data.List.Split (chunksOf)
 
-data Player = X
+data Piece = X
             | O
             deriving (Show, Eq)
 
-data Result = Winner Player | Tie | NotOver
+data Result = Winner Piece | Tie | NotOver
               deriving (Show)
 
 -- n × m board
-data Board = Board { layout :: [Maybe Player]
+data Board = Board { layout :: [Maybe Piece]
                    , size   :: Size
                    } deriving (Eq)
 
@@ -40,6 +43,28 @@ type Index = Int
 
 data Direction = RowLeft | RowDown | RowDiag1 | RowDiag2
                  deriving (Show)
+
+-- current state of the game
+data GameState = GameState { board   :: Board    -- current board
+                           , winK    :: WinK     -- k in a row needed to win
+                           , queue   :: [Piece] -- queue of players
+                           , roundNo :: Int      -- current round number
+                           } deriving (Show)
+
+-- show the state of the game
+showState :: GameState -> String
+showState gs = "=============" ++ "\n" ++ (show $ roundNo gs) ++ ": "
+               ++ (show . head $ queue gs) ++ "'s turn:\n" ++ (show $ board gs)
+
+
+-- initial state for a game
+initialState :: Size -> WinK -> GameState
+initialState (n, m) k = GameState 
+                          (Board ((take $ n*m) $ repeat Nothing) (n, m))
+                          k
+                          [X, O]
+                          1
+
 
 -- convert Move to Int
 fromMove :: Size -> Move -> Int
@@ -68,7 +93,7 @@ moveIsLegal move b | index >= n*m           = Left "Out of bounds!"
                          lo     = (layout b)
 
 -- perform move on board for player p, if move is legal
-putPiece :: Player -> Move -> Board -> Either String Board
+putPiece :: Piece -> Move -> Board -> Either String Board
 putPiece p move b = case moveIsLegal move b of
                       Left err -> Left err
                       Right () -> Right $ Board (put (Just p) index lo) (size b)
@@ -83,9 +108,9 @@ legalMoves b = let aux _ []             = []
                    aux n (_:xs)         = aux (n+1) xs
                in aux 0 (layout b)
 
--- return list of indices where player p is located on board
-findPlayerI :: Player -> Board -> [Index]
-findPlayerI p = (findIndices (== Just p)) . layout
+-- return list of indices where piece p is located on board
+findPieceI :: Piece -> Board -> [Index]
+findPieceI p = (findIndices (== Just p)) . layout
 
 -- check if elements of sorted l are contained in a sorted list
 ins :: (Eq a) => [a] -> [a] -> Bool
@@ -144,10 +169,10 @@ checkWin :: WinK -> Size -> [Index] -> Bool
 checkWin k s indices = any id $ map (checkWinFromIndex k s indices) indices
 
 -- check if player p has won
-playerWon :: WinK -> Board -> Player -> Bool
+playerWon :: WinK -> Board -> Piece -> Bool
 playerWon k b p = checkWin k (size b) playerI
                     where
-                      playerI = findPlayerI p b
+                      playerI = findPieceI p b
 
 -- check if game is ove == there are no more legal moves
 gameIsOver :: Board -> Bool
@@ -160,7 +185,7 @@ boardResult k b | playerWon k b X = Winner X
                 | gameIsOver b    = Tie
                 | otherwise       = NotOver
 
-showSquare :: Maybe Player -> String
+showSquare :: Maybe Piece -> String
 showSquare Nothing  = "."
 showSquare (Just p) = show p
 
