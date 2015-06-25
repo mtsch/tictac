@@ -12,14 +12,22 @@ data Player = Player { name :: String
 instance Show Player where
   show p = name p
 
+-- player input
 humanPlayer :: Player
 humanPlayer = Player "Human player" (\ _ -> getIntPair)
 
-simpleRandomPlayerFun :: GameState -> IO Move
-simpleRandomPlayerFun gs = do gen <- newStdGen
-                             let [n1, m1] = take 2 $ randoms gen :: [Int]
-                             return (n1 `mod` n, m1 `mod` m)
-                               where (n, m) = (size . board) gs
-
 -- no checking if moves are legal
-simpleRandomPlayer = Player "Simple random player" randomPlayerFun
+pickRandomMove :: GameState -> IO Move
+pickRandomMove gs = do gen <- newStdGen
+                       let [n1, m1] = take 2 $ randoms gen :: [Int]
+                       return (n1 `mod` n, m1 `mod` m)
+                         where (n, m) = (size . board) gs
+
+randomPlayerFun :: GameState -> IO Move
+randomPlayerFun gs = do move <- pickRandomMove gs
+                        case moveIsLegal move (board gs) of
+                          Left _   -> randomPlayerFun gs
+                          Right () -> return move
+
+randomPlayer :: Player
+randomPlayer = Player "Random player" randomPlayerFun
