@@ -50,4 +50,4 @@ main = do putStrLn "Input board size:"
           boardSize <- getSize
           putStrLn "Input winning k:"
           winningK <- getPositiveInt
-          loop (humanPlayer, humanPlayer) $ initialState boardSize winningK
+          loop (simpleRandomPlayer, simpleRandomPlayer) $ initialState boardSize winningK
