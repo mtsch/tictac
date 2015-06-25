@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wall #-}
 module Main where
 
-import GameLogic
+import GameState
 import Helpers
 import Player
 
@@ -11,38 +11,31 @@ spacer :: String
 spacer = "============="
 
 -- perform move made by player function
-performMoveBy :: Player -> GameState -> IO Board
+performMoveBy :: Player -> GameState -> IO GameState
 performMoveBy player gs = do
     move <- (fun player) gs
-    case putPiece (head $ queue gs) move (board gs) of
+    case makeMove move gs of
       Left err -> 
         putStrLn ("Invalid input: " ++ err) >> performMoveBy player gs
-      Right newBoard ->
-        return newBoard
+      Right newState ->
+        return newState
 
 -- main loop - pair of players, playerX and playerO
 loop :: (Player, Player) -> GameState -> IO ()
 loop players gs = do
     putStrLn $ showState gs
     let currentPlayer = head $ queue gs
-    newBoard <- if currentPlayer == X
+    newState <- if currentPlayer == X
                   then performMoveBy (fst players) gs
                   else performMoveBy (snd players) gs
-    let k = winK gs
-    case boardResult k newBoard of
+    case result newState of
       Winner w -> do putStrLn spacer
                      putStrLn $ (show w) ++ " wins!"
-                     putStrLn $ show newBoard
+                     putStrLn . show $ board newState
       Tie      -> do putStrLn spacer
                      putStrLn "It's a tie!"
-                     putStrLn $ show newBoard
-      NotOver  ->
-        let newState = GameState 
-                         newBoard (winK gs)
-                         (tail (queue gs) ++ [currentPlayer])
-                         ((roundNo gs) + 1)
-        in
-        loop players newState
+                     putStrLn . show $ board newState
+      NotOver  -> loop players newState
 
 -- choose type of game and begin
 main :: IO ()
@@ -50,4 +43,4 @@ main = do putStrLn "Input board size:"
           boardSize <- getSize
           putStrLn "Input winning k:"
           winningK <- getPositiveInt
-          loop (randomPlayer, randomPlayer) $ initialState boardSize winningK
+          loop (humanPlayer, randomPlayer) $ initialState boardSize winningK

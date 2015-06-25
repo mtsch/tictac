@@ -1,5 +1,6 @@
+{-# OPTIONS_GHC -Wall #-}
 -- random helper functions
-module Helpers 
+module Helpers
   ( getIntPair
   , getInt
   , getSize
@@ -31,9 +32,9 @@ readIntPair s = readTwoInts s >>= listToMove
 
 -- read positive int
 readPositiveInt :: String -> Maybe Int
-readPositiveInt s = readMaybeInt s >>= (\ i -> if i > 0 
-                                               then Just i 
-                                               else Nothing)
+readPositiveInt s = readMaybeInt s >>= (\ i -> if i > 0
+                                                 then Just i
+                                                 else Nothing)
 
 -- read valid size of board - board must be at least 2×2
 readSize :: String -> Maybe (Int, Int)
@@ -46,10 +47,10 @@ getSomething :: (String -> Maybe a) -> String -> IO a
 getSomething readFun errmsg = do
     input <- getLine
     case readFun input of
-      Nothing -> 
+      Nothing ->
         do putStrLn $ "Invalid input: " ++ errmsg
            getSomething readFun errmsg
-      Just p -> 
+      Just p ->
         return p
 
 -- get pair of Int from stdin

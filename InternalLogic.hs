@@ -1,21 +1,20 @@
 {-# OPTIONS_GHC -Wall #-}
-module GameLogic
+-- internal game logic
+module InternalLogic
   ( Piece (..)
   , Result (..)
   , Board  (..)
   , Move
   , Size
   , WinK
-  , GameState (..)
-  , showState
-  , initialState
+  , eitherMoveLegal
   , putPiece
   , legalMoves
   , boardResult
   )
 where
 
-import Data.List
+import Data.List (findIndices)
 import Data.List.Split (chunksOf)
 
 data Piece = X
@@ -34,7 +33,6 @@ instance Show Board where
     show (Board l (_, m)) = unlines $ chunksOf m str
                               where str = concat $ map showSquare l
 
-
 type Move = (Int, Int)
 type Size = (Int, Int)
 
@@ -43,28 +41,6 @@ type Index = Int
 
 data Direction = RowLeft | RowDown | RowDiag1 | RowDiag2
                  deriving (Show)
-
--- current state of the game
-data GameState = GameState { board   :: Board    -- current board
-                           , winK    :: WinK     -- k in a row needed to win
-                           , queue   :: [Piece] -- queue of players
-                           , roundNo :: Int      -- current round number
-                           } deriving (Show)
-
--- show the state of the game
-showState :: GameState -> String
-showState gs = "=============" ++ "\n" ++ (show $ roundNo gs) ++ ": "
-               ++ (show . head $ queue gs) ++ "'s turn:\n" ++ (show $ board gs)
-
-
--- initial state for a game
-initialState :: Size -> WinK -> GameState
-initialState (n, m) k = GameState 
-                          (Board ((take $ n*m) $ repeat Nothing) (n, m))
-                          k
-                          [X, O]
-                          1
-
 
 -- convert Move to Int
 fromMove :: Size -> Move -> Int
@@ -82,19 +58,19 @@ put c n (x:xs) = x : (put c (n-1) xs)
 
 
 -- check if move is legal
-moveIsLegal :: Move -> Board -> Either String ()
-moveIsLegal move b | index >= n*m           = Left "Out of bounds!"
-                   | index < 0              = Left "Negative value!"
-                   | lo !! index /= Nothing = Left "Position taken!"
-                   | otherwise              = Right ()
-                       where
-                         index  = fromMove (size b) move
-                         (n, m) = (size b)
-                         lo     = (layout b)
+eitherMoveLegal :: Move -> Board -> Either String ()
+eitherMoveLegal move b | index >= n*m           = Left "Out of bounds!"
+                       | index < 0              = Left "Negative value!"
+                       | lo !! index /= Nothing = Left "Position taken!"
+                       | otherwise              = Right ()
+                           where
+                             index  = fromMove (size b) move
+                             (n, m) = (size b)
+                             lo     = (layout b)
 
 -- perform move on board for player p, if move is legal
 putPiece :: Piece -> Move -> Board -> Either String Board
-putPiece p move b = case moveIsLegal move b of
+putPiece p move b = case eitherMoveLegal move b of
                       Left err -> Left err
                       Right () -> Right $ Board (put (Just p) index lo) (size b)
                         where
@@ -134,12 +110,12 @@ validRowI (n, m) rowI = let tailMod = map (`mod` m) $ tail rowI in
 
 -- rev is used for right to left diagonals
 genValidRow :: Bool -> Index -> WinK -> Size -> Index -> [Index]
-genValidRow rev step k s i = if   validRowI s $ fun rowI
-                             then rowI
-                             else []
-                               where
-                                 rowI = genRowI k step i
-                                 fun  = if rev then reverse else id
+genValidRow rev step k s i = if validRowI s $ fun rowI
+                               then rowI
+                               else []
+                                 where
+                                   rowI = genRowI k step i
+                                   fun  = if rev then reverse else id
 
 -- generate list of indices starting from i that form a row in a direction,
 -- if such a row exists
@@ -174,7 +150,7 @@ playerWon k b p = checkWin k (size b) playerI
                     where
                       playerI = findPieceI p b
 
--- check if game is ove == there are no more legal moves
+-- check if game is over == there are no more legal moves
 gameIsOver :: Board -> Bool
 gameIsOver b = length (legalMoves b) == 0
 
@@ -185,7 +161,7 @@ boardResult k b | playerWon k b X = Winner X
                 | gameIsOver b    = Tie
                 | otherwise       = NotOver
 
+-- square to string
 showSquare :: Maybe Piece -> String
 showSquare Nothing  = "."
 showSquare (Just p) = show p
-

@@ -1,6 +1,12 @@
-module Player where
+{-# OPTIONS_GHC -Wall #-}
+module Player 
+ ( Player (..)
+ , humanPlayer
+ , randomPlayer
+ )
+where
 
-import GameLogic
+import GameState
 import Helpers
 
 import System.Random
@@ -14,7 +20,8 @@ instance Show Player where
 
 -- player input
 humanPlayer :: Player
-humanPlayer = Player "Human player" (\ _ -> getIntPair)
+humanPlayer = Player "Human player" 
+                     (\ _ -> putStrLn "Input move (row, col):" >> getIntPair)
 
 -- no checking if moves are legal
 pickRandomMove :: GameState -> IO Move
@@ -23,11 +30,13 @@ pickRandomMove gs = do gen <- newStdGen
                        return (n1 `mod` n, m1 `mod` m)
                          where (n, m) = (size . board) gs
 
+-- function for random player
 randomPlayerFun :: GameState -> IO Move
 randomPlayerFun gs = do move <- pickRandomMove gs
-                        case moveIsLegal move (board gs) of
-                          Left _   -> randomPlayerFun gs
-                          Right () -> return move
+                        if moveIsLegal move gs 
+                          then return move
+                          else randomPlayerFun gs
 
+-- 
 randomPlayer :: Player
 randomPlayer = Player "Random player" randomPlayerFun
